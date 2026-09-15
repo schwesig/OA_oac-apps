@@ -25,6 +25,24 @@ spec:
           - openshift-dns
           - openshift-ingress
           - openshift-apiserver
+  # The Grafana operator reconciles Grafana resources inside the project
+  # namespaces, so it has to reach the instance it manages. It builds that
+  # address itself from the instance name and Grafana's own port, so the
+  # project cannot redirect it, and the baseline policy denies cross-namespace
+  # ingress, so without this rule the operator never gets in.
+  - name: "allow-grafana-operator-ingress"
+    action: Allow
+    from:
+    - namespaces:
+        matchExpressions:
+        - key: kubernetes.io/metadata.name
+          operator: In
+          values:
+          - {{ .Values.grafanaOperatorNamespace }}
+    ports:
+    - portNumber:
+        protocol: TCP
+        port: {{ .Values.grafanaPort }}
 
   egress:
   - name: "allow-system-egress"

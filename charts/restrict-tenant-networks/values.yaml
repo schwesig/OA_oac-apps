@@ -1,2 +1,8 @@
 tenantKey: "massopen.cloud/project"
 sharedServiceKey: "massopen.cloud/shared-services"
+
+# Where the Grafana operator runs, and the port it uses to manage a Grafana
+# instance in a project namespace. The operator derives that port from Grafana's
+# own configuration rather than from the service, so it is not ours to choose.
+grafanaOperatorNamespace: "grafana-operator"
+grafanaPort: 3000

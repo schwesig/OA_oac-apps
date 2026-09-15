@@ -1,0 +1,31 @@
+suite: restrict-tenant-networks grafana operator ingress
+templates:
+  - templates/allow-tenant-infrastructure.yaml
+tests:
+  # The operator reconciles Grafana resources inside the project namespaces, so
+  # it has to reach the instance it manages. The baseline policy denies
+  # cross-namespace ingress, so without this rule it never gets in and the
+  # dashboards and datasources in a project are never provisioned.
+  - it: lets the grafana operator reach a project
+    asserts:
+      - contains:
+          path: spec.ingress
+          content:
+            name: "allow-grafana-operator-ingress"
+          any: true
+
+  # The port is what keeps this narrow. The operator derives it from Grafana's
+  # own configuration rather than from the service, so it is not ours to choose,
+  # and opening the namespace instead of the port would let the operator reach
+  # anything a project runs.
+  - it: opens only the port the operator manages grafana on
+    asserts:
+      - equal:
+          path: spec.ingress[1].ports[0].portNumber.port
+          value: 3000
+      - equal:
+          path: spec.ingress[1].ports[0].portNumber.protocol
+          value: TCP
+      - equal:
+          path: spec.ingress[1].from[0].namespaces.matchExpressions[0].values[0]
+          value: grafana-operator
