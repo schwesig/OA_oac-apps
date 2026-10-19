@@ -1,0 +1,14 @@
+# Red Hat installs the Loki Operator into openshift-operators-redhat and watches
+# all namespaces, so the LokiStack can live in openshift-logging. The same chart
+# and channel go to the hub and the workload clusters; nothing here is per tier.
+namespace: openshift-operators-redhat
+operatorgroup:
+  targetNamespaces: false
+subscription:
+  # Pin the minor stream. Confirm against the cluster catalog before changing:
+  # oc get packagemanifest loki-operator -n openshift-marketplace
+  channel: stable-6.6
+  name: loki-operator
+  source: redhat-operators
+  sourceNamespace: openshift-marketplace
+  installPlanApproval: Automatic

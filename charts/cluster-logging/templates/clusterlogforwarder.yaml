@@ -1,0 +1,73 @@
+{{- $c := .Values.collector }}
+{{- $inputs := list }}
+{{- if $c.inputs.application }}{{ $inputs = append $inputs "application" }}{{ end }}
+{{- if $c.inputs.infrastructure }}{{ $inputs = append $inputs "infrastructure" }}{{ end }}
+{{- if $c.inputs.audit.enabled }}{{ $inputs = append $inputs "node-audit" }}{{ end }}
+{{- if $c.inputs.hostedControlPlaneAudit.enabled }}{{ $inputs = append $inputs "hcp-audit" }}{{ end }}
+{{- $outputs := list }}
+{{- if .Values.lokiStack.enabled }}{{ $outputs = append $outputs "default-lokistack" }}{{ end }}
+{{- range $c.extraOutputs }}{{ $outputs = append $outputs .name }}{{ end }}
+{{- if not $inputs }}{{ fail "collector.inputs enables nothing" }}{{ end }}
+{{- if not $outputs }}{{ fail "no output: enable lokiStack or set collector.extraOutputs" }}{{ end }}
+apiVersion: observability.openshift.io/v1
+kind: ClusterLogForwarder
+metadata:
+  name: {{ $c.name }}
+  namespace: {{ .Values.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  managementState: Managed
+  serviceAccount:
+    name: {{ $c.serviceAccount }}
+  {{- with $c.tolerations }}
+  collector:
+    tolerations:
+      {{- toYaml . | nindent 6 }}
+  {{- end }}
+  {{- if or $c.inputs.audit.enabled $c.inputs.hostedControlPlaneAudit.enabled }}
+  inputs:
+    {{- if $c.inputs.audit.enabled }}
+    - name: node-audit
+      type: audit
+      audit:
+        sources:
+          {{- toYaml $c.inputs.audit.sources | nindent 10 }}
+    {{- end }}
+    {{- if $c.inputs.hostedControlPlaneAudit.enabled }}
+    - name: hcp-audit
+      type: application
+      application:
+        includes:
+          {{- range $c.inputs.hostedControlPlaneAudit.namespaces }}
+          - namespace: {{ . | quote }}
+            container: audit-logs
+          {{- end }}
+    {{- end }}
+  {{- end }}
+  outputs:
+    {{- if .Values.lokiStack.enabled }}
+    - name: default-lokistack
+      type: lokiStack
+      lokiStack:
+        target:
+          name: {{ .Values.lokiStack.name }}
+          namespace: {{ .Values.namespace }}
+        authentication:
+          token:
+            from: serviceAccount
+      tls:
+        ca:
+          configMapName: openshift-service-ca.crt
+          key: service-ca.crt
+    {{- end }}
+    {{- with $c.extraOutputs }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  pipelines:
+    - name: cluster-logs
+      inputRefs:
+        {{- toYaml $inputs | nindent 8 }}
+      outputRefs:
+        {{- toYaml $outputs | nindent 8 }}

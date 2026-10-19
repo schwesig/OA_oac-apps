@@ -1,0 +1,16 @@
+# Hub slice of logging: only the hosted control planes' API server audit, which
+# is the workload clusters' API audit and exists nowhere else. Widening this to
+# the hub's own logs later is a change to this file.
+lokiStack:
+  size: 1x.demo
+collector:
+  inputs:
+    application: false
+    infrastructure: false
+    audit:
+      enabled: false
+    hostedControlPlaneAudit:
+      enabled: true
+      namespaces:
+        - clusters-oac-dev-workload0
+        - clusters-oac-dev-workload1

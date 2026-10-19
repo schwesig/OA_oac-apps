@@ -1,0 +1,35 @@
+{{- $c := .Values.collector }}
+{{- $roles := list }}
+{{- if or $c.inputs.application $c.inputs.hostedControlPlaneAudit.enabled }}{{ $roles = append $roles "collect-application-logs" }}{{ end }}
+{{- if $c.inputs.infrastructure }}{{ $roles = append $roles "collect-infrastructure-logs" }}{{ end }}
+{{- if $c.inputs.audit.enabled }}{{ $roles = append $roles "collect-audit-logs" }}{{ end }}
+{{- if .Values.lokiStack.enabled }}{{ $roles = append $roles "logging-collector-logs-writer" }}{{ end }}
+{{- /*
+Wave 1, ahead of the forwarder in wave 3. If the forwarder names a log type
+whose collect-* binding is missing, the operator removes the collector
+DaemonSet and every log type stops, not just that one.
+*/}}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ $c.serviceAccount }}
+  namespace: {{ .Values.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+{{- range $roles }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ $c.serviceAccount }}-{{ . }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ . }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ $c.serviceAccount }}
+    namespace: {{ $.Values.namespace }}
+{{- end }}

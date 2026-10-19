@@ -1,0 +1,17 @@
+{{- /*
+Namespace is written here rather than through operator-library because Red Hat
+asks for the cluster-monitoring label on it, and the library helper has no
+labels.
+*/ -}}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Values.namespace }}
+  labels:
+    openshift.io/cluster-monitoring: "true"
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+---
+{{ include "operator-library.operatorgroup" . }}
+---
+{{ include "operator-library.subscription" . }}

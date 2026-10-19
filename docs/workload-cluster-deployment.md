@@ -38,10 +38,27 @@ Some shared services require additional work prior to configuration. These are d
 * [Cluster certificates](network-inventory-and-configuration.md#cluster-certificates)
 * [Public IPs](network-inventory-and-configuration.md#public-ips)
 * [External DNS](network-inventory-and-configuration.md#external-dns)
-* observability (*TBD*)
+* [Logging](#logging)
 * ??
 
 After the workload cluster is deployed, you may optionally want to [acquire a public IP](network-inventory-and-configuration.md#public-ips) and [expose the cluster's ingress and API IPs to the public internet](network-inventory-and-configuration.md#firewall).
+
+## Logging
+
+Each workload cluster with logging keeps its own logs. The `cluster-logging` chart installs a LokiStack (`openshift-logging/logging-loki`) and a ClusterLogForwarder (`collector`) that collects application, infrastructure, and node audit logs (auditd and OVN). It also adds Observe > Logs to the console. Project members see the logs of their own namespaces; the infrastructure and audit logs are readable only by the groups in `viewers.groups` (by default `open-accelerator-admins`).
+
+Storage is Pure: the log chunks go to a FlashBlade bucket claimed through COSI (`fb-bucket`), and the LokiStack volumes use `pure-fb-nfsv4`. Retention is 15 days for application and infrastructure logs and 90 days for audit logs.
+
+A workload cluster's API server audit does not exist on the workload cluster: its API servers run in `clusters-<cluster>` on the infra cluster. The infra cluster collects it into its own LokiStack (see `apps/<infra-cluster>/hub-cluster-logging.yaml` and `values/<infra-cluster>/local-cluster/cluster-logging.yaml`), where it is kept for the audit retention. Query it there with `{kubernetes_namespace_name="clusters-<cluster>", kubernetes_container_name="audit-logs"}`.
+
+To enable logging on a workload cluster:
+
+1. Make sure the cluster's Pure S3 path works: it needs a `kustomize/pure-cosi/overlays/<cluster>` overlay and working `object-storage-proxy` values, so that a `BucketClaim` becomes ready.
+2. Create `values/<infra-cluster>/<cluster>/cluster-logging.yaml` with at least the LokiStack size, e.g. `lokiStack.size: 1x.demo` on dev. The chart has no default size.
+3. Add `massopen.cloud/feature-logging: "true"` to `clusterLabels` in `hosted-clusters/<infra-cluster>/<cluster>/values.yaml`. The `logging-clusters` placement then selects the cluster, and the `logging-clusters` ApplicationSet deploys the `loki-operator` and `cluster-logging` charts to it.
+4. To collect the cluster's API audit, add `clusters-<cluster>` to `collector.inputs.hostedControlPlaneAudit.namespaces` in `values/<infra-cluster>/local-cluster/cluster-logging.yaml`. Only `oac-dev-infra` has the hub-side logging apps so far; another infra cluster needs its own `apps/<infra-cluster>/hub-loki-operator.yaml` and `hub-cluster-logging.yaml` first.
+
+Removing the label or the chart keeps the bucket and its logs: the `BucketClaim` is never pruned or deleted by ArgoCD, so deleting it is a deliberate manual step.
 
 ## Example: OAC Prod Workload0 Cluster
 

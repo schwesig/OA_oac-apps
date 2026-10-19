@@ -1,0 +1,33 @@
+suite: loki-operator
+templates:
+  - templates/operator.yaml
+
+tests:
+  - it: renders namespace, operatorgroup and subscription
+    asserts:
+      - hasDocuments:
+          count: 3
+
+  - it: labels the namespace for cluster monitoring
+    documentIndex: 0
+    asserts:
+      - equal:
+          path: metadata.labels["openshift.io/cluster-monitoring"]
+          value: "true"
+
+  - it: watches all namespaces so the LokiStack can live in openshift-logging
+    documentIndex: 1
+    asserts:
+      - equal:
+          path: spec
+          value: {}
+
+  - it: subscribes to the loki-operator package from redhat-operators
+    documentIndex: 2
+    asserts:
+      - equal:
+          path: spec.name
+          value: loki-operator
+      - equal:
+          path: spec.source
+          value: redhat-operators

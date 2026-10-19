@@ -1,0 +1,118 @@
+suite: cluster-logging LokiStack and bucket
+templates:
+  - templates/lokistack.yaml
+  - templates/bucket.yaml
+  - templates/storage-secret.yaml
+values:
+  - ../../ci/test-values.yaml
+
+tests:
+  # Dev runs 1x.demo and prod is sized from measurement, so a cluster turned
+  # on without a size must not quietly get one.
+  - it: fails closed without a size
+    template: templates/lokistack.yaml
+    set:
+      lokiStack.size: ""
+    asserts:
+      - failedTemplate:
+          errorPattern: lokiStack.size is required
+
+  - it: keeps its PVCs on Pure FlashBlade
+    template: templates/lokistack.yaml
+    asserts:
+      - equal:
+          path: spec.storageClassName
+          value: pure-fb-nfsv4
+
+  - it: uses openshift-logging tenancy so reads follow this cluster's RBAC
+    template: templates/lokistack.yaml
+    asserts:
+      - equal:
+          path: spec.tenants.mode
+          value: openshift-logging
+      - equal:
+          path: metadata.name
+          value: logging-loki
+
+  - it: keeps application and infrastructure 15 days and audit 90 days
+    template: templates/lokistack.yaml
+    asserts:
+      - equal:
+          path: spec.limits.tenants.application.retention.days
+          value: 15
+      - equal:
+          path: spec.limits.tenants.infrastructure.retention.days
+          value: 15
+      - equal:
+          path: spec.limits.tenants.audit.retention.days
+          value: 90
+      - notExists:
+          path: spec.limits.tenants.application.retention.streams
+
+  # On the hub the hosted control plane audit arrives as application logs. It
+  # is still the workload clusters' API audit, so it keeps the audit window.
+  - it: keeps the hosted control plane audit for the audit retention
+    template: templates/lokistack.yaml
+    set:
+      collector.inputs.hostedControlPlaneAudit.enabled: true
+      collector.inputs.hostedControlPlaneAudit.namespaces:
+        - clusters-a
+        - clusters-b
+    asserts:
+      - equal:
+          path: spec.limits.tenants.application.retention.days
+          value: 15
+      - equal:
+          path: spec.limits.tenants.application.retention.streams
+          value:
+            - days: 90
+              priority: 1
+              selector: '{kubernetes_namespace_name=~"clusters-a|clusters-b", kubernetes_container_name="audit-logs"}'
+
+  - it: turns namespace globs into the stream selector's regex
+    template: templates/lokistack.yaml
+    set:
+      collector.inputs.hostedControlPlaneAudit.enabled: true
+    asserts:
+      - equal:
+          path: spec.limits.tenants.application.retention.streams[0].selector
+          value: '{kubernetes_namespace_name=~"clusters-.*", kubernetes_container_name="audit-logs"}'
+
+  - it: stores chunks in a Pure FlashBlade bucket
+    template: templates/bucket.yaml
+    documentIndex: 0
+    asserts:
+      - isKind:
+          of: BucketClaim
+      - equal:
+          path: spec.bucketClassName
+          value: fb-bucket
+
+  # fb-bucket deletes the bucket with the claim, and the logs with it.
+  - it: never prunes or deletes the bucket claim
+    template: templates/bucket.yaml
+    documentIndex: 0
+    asserts:
+      - matchRegex:
+          path: metadata.annotations["argocd.argoproj.io/sync-options"]
+          pattern: Prune=false,Delete=false
+
+  # pure-cosi hands out a bare host name and Loki rejects an endpoint without
+  # a scheme.
+  - it: gives Loki an endpoint with a scheme
+    template: templates/storage-secret.yaml
+    documentIndex: 4
+    asserts:
+      - isKind:
+          of: ExternalSecret
+      - matchRegex:
+          path: spec.target.template.data.endpoint
+          pattern: https://
+
+  - it: renders no store at all on a forward-only cluster
+    template: templates/lokistack.yaml
+    set:
+      lokiStack.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0

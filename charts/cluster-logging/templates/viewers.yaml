@@ -1,0 +1,17 @@
+{{- range $group := .Values.viewers.groups }}
+{{- range $tenant := list "application" "infrastructure" "audit" }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ $group }}-logging-{{ $tenant }}-view
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-logging-{{ $tenant }}-view
+subjects:
+  - apiGroup: rbac.authorization.k8s.io
+    kind: Group
+    name: {{ $group }}
+{{- end }}
+{{- end }}
