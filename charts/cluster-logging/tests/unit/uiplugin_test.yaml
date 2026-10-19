@@ -13,10 +13,3 @@ tests:
       - equal:
           path: spec.logging.lokiStack.name
           value: logging-loki
-
-  - it: is absent when there is no local stack to view
-    set:
-      lokiStack.enabled: false
-    asserts:
-      - hasDocuments:
-          count: 0

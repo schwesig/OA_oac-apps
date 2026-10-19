@@ -45,7 +45,7 @@ After the workload cluster is deployed, you may optionally want to [acquire a pu
 
 ## Logging
 
-Each workload cluster with logging keeps its own logs. The `cluster-logging` chart installs a LokiStack (`openshift-logging/logging-loki`) and a ClusterLogForwarder (`collector`) that collects application, infrastructure, and node audit logs (auditd and OVN). It also adds Observe > Logs to the console. Project members see the logs of their own namespaces; the infrastructure and audit logs are readable only by the groups in `viewers.groups` (by default `open-accelerator-admins`).
+Each workload cluster with logging keeps its own logs. The `cluster-logging` chart installs a LokiStack (`openshift-logging/logging-loki`) and a ClusterLogForwarder (`collector`) that collects application, infrastructure, and node audit logs (auditd and OVN). It also adds Observe > Logs to the console. Project members with `view` or `edit` in a namespace see that namespace's application logs, through a ClusterRole the chart aggregates into those roles; the infrastructure and audit logs are readable only by the groups in `viewers.groups` (by default `open-accelerator-admins`).
 
 Storage is Pure: the log chunks go to a FlashBlade bucket claimed through COSI (`fb-bucket`), and the LokiStack volumes use `pure-fb-nfsv4`. Retention is 15 days for application and infrastructure logs and 90 days for audit logs.
 

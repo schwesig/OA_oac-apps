@@ -1,4 +1,3 @@
-{{- if .Values.lokiStack.enabled }}
 {{- /*
 fb-bucket has deletionPolicy Delete, so deleting this claim deletes the bucket
 and every log in it. Prune=false and Delete=false keep it when the chart, the
@@ -29,4 +28,3 @@ spec:
   bucketAccessClassName: {{ .Values.lokiStack.bucket.accessClassName }}
   bucketClaimName: {{ .Values.lokiStack.name }}
   credentialsSecretName: bucketclaim-{{ .Values.lokiStack.name }}
-{{- end }}

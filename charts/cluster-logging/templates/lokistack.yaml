@@ -1,4 +1,3 @@
-{{- if .Values.lokiStack.enabled }}
 {{- $ls := .Values.lokiStack }}
 {{- $hcpAudit := .Values.collector.inputs.hostedControlPlaneAudit }}
 apiVersion: loki.grafana.com/v1
@@ -43,4 +42,3 @@ spec:
               selector: '{kubernetes_namespace_name=~"{{ $hcpAudit.namespaces | join "|" | replace "*" ".*" }}", kubernetes_container_name="audit-logs"}'
           {{- end }}
       {{- end }}
-{{- end }}

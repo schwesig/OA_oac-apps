@@ -3,7 +3,7 @@
 {{- if or $c.inputs.application $c.inputs.hostedControlPlaneAudit.enabled }}{{ $roles = append $roles "collect-application-logs" }}{{ end }}
 {{- if $c.inputs.infrastructure }}{{ $roles = append $roles "collect-infrastructure-logs" }}{{ end }}
 {{- if $c.inputs.audit.enabled }}{{ $roles = append $roles "collect-audit-logs" }}{{ end }}
-{{- if .Values.lokiStack.enabled }}{{ $roles = append $roles "logging-collector-logs-writer" }}{{ end }}
+{{- $roles = append $roles "logging-collector-logs-writer" }}
 {{- /*
 Wave 1, ahead of the forwarder in wave 3. If the forwarder names a log type
 whose collect-* binding is missing, the operator removes the collector

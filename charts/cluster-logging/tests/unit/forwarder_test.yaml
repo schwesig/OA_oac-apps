@@ -42,20 +42,6 @@ tests:
             - namespace: clusters-*
               container: audit-logs
 
-  - it: forwards only, to an extra output, when the local store is off
-    template: templates/clusterlogforwarder.yaml
-    set:
-      lokiStack.enabled: false
-      collector.extraOutputs:
-        - name: central
-          type: loki
-          loki:
-            url: https://gateway.example/api/logs/v1/application
-    asserts:
-      - equal:
-          path: spec.pipelines[0].outputRefs
-          value: [central]
-
   - it: binds the audit collector role only when audit is collected
     template: templates/collector-rbac.yaml
     set:

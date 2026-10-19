@@ -108,11 +108,3 @@ tests:
       - matchRegex:
           path: spec.target.template.data.endpoint
           pattern: https://
-
-  - it: renders no store at all on a forward-only cluster
-    template: templates/lokistack.yaml
-    set:
-      lokiStack.enabled: false
-    asserts:
-      - hasDocuments:
-          count: 0

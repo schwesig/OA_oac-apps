@@ -1,4 +1,4 @@
-{{- if and .Values.uiPlugin.enabled .Values.lokiStack.enabled }}
+{{- if .Values.uiPlugin.enabled }}
 apiVersion: observability.openshift.io/v1alpha1
 kind: UIPlugin
 metadata:
