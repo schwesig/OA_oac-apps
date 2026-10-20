@@ -58,7 +58,7 @@ To enable logging on a workload cluster:
 3. Add `massopen.cloud/feature-logging: "true"` to `clusterLabels` in `hosted-clusters/<infra-cluster>/<cluster>/values.yaml`. The `logging-clusters` placement then selects the cluster, and the `logging-clusters` ApplicationSet deploys the `loki-operator` and `cluster-logging` charts to it.
 4. To collect the cluster's API audit, add `clusters-<cluster>` to `collector.inputs.hostedControlPlaneAudit.namespaces` in `values/<infra-cluster>/local-cluster/cluster-logging.yaml`. Only `oac-dev-infra` has the hub-side logging apps so far; another infra cluster needs its own `apps/<infra-cluster>/hub-loki-operator.yaml` and `hub-cluster-logging.yaml` first.
 
-Removing the label or the chart keeps the bucket and its logs: the `BucketClaim` is never pruned or deleted by ArgoCD, so deleting it is a deliberate manual step.
+Removing the label or the chart keeps the bucket and its logs: neither the `BucketClaim` nor the `openshift-logging` Namespace that holds it is ever pruned or deleted by ArgoCD, so deleting them is a deliberate manual step.
 
 ## Example: OAC Prod Workload0 Cluster
 

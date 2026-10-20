@@ -1,3 +1,8 @@
+{{- /*
+Deleting the Namespace deletes the BucketClaim in it, whatever the claim's own
+annotations say, and fb-bucket then deletes the logs. So the Namespace gets the
+same Prune=false and Delete=false.
+*/}}
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -6,6 +11,7 @@ metadata:
     openshift.io/cluster-monitoring: "true"
   annotations:
     argocd.argoproj.io/sync-wave: "0"
+    argocd.argoproj.io/sync-options: Prune=false,Delete=false
 ---
 {{ include "operator-library.operatorgroup" . }}
 ---

@@ -1,0 +1,19 @@
+suite: cluster-logging operator
+templates:
+  - templates/operator.yaml
+values:
+  - ../../ci/test-values.yaml
+
+tests:
+  # Deleting the Namespace takes the BucketClaim, and with it the logs.
+  - it: never prunes or deletes the logging namespace
+    documentIndex: 0
+    asserts:
+      - isKind:
+          of: Namespace
+      - equal:
+          path: metadata.annotations["argocd.argoproj.io/sync-options"]
+          value: Prune=false,Delete=false
+      - equal:
+          path: metadata.annotations["argocd.argoproj.io/sync-wave"]
+          value: "0"
