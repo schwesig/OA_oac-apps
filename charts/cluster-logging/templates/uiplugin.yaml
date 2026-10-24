@@ -1,0 +1,16 @@
+{{- if .Values.uiPlugin.enabled }}
+apiVersion: observability.openshift.io/v1alpha1
+kind: UIPlugin
+metadata:
+  # Fixed by the CRD for a Logging plugin, like "monitoring" in the
+  # cluster-observability-operator chart.
+  name: logging
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  type: Logging
+  logging:
+    lokiStack:
+      name: {{ .Values.lokiStack.name }}
+{{- end }}

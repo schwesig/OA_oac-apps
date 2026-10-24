@@ -1,0 +1,18 @@
+{{- /*
+The same rule as cluster-logging-application-view, aggregated into view and
+edit. Bound in a project's namespace through those roles, it lets the LokiStack
+gateway return that namespace's application logs and nothing else; the
+infrastructure and audit tenants stay with viewers.groups.
+*/}}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: cluster-logging-project-application-view
+  labels:
+    rbac.authorization.k8s.io/aggregate-to-view: "true"
+    rbac.authorization.k8s.io/aggregate-to-edit: "true"
+rules:
+  - apiGroups: ["loki.grafana.com"]
+    resources: ["application"]
+    resourceNames: ["logs"]
+    verbs: ["get"]

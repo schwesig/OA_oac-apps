@@ -1,0 +1,44 @@
+{{- $ls := .Values.lokiStack }}
+{{- $hcpAudit := .Values.collector.inputs.hostedControlPlaneAudit }}
+apiVersion: loki.grafana.com/v1
+kind: LokiStack
+metadata:
+  name: {{ $ls.name }}
+  namespace: {{ .Values.namespace }}
+  annotations:
+    # The CRD comes from the loki-operator Application, so the first sync of
+    # this one can run ahead of it and retries until it exists.
+    argocd.argoproj.io/sync-wave: "2"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  size: {{ required "lokiStack.size is required" $ls.size }}
+  storageClassName: {{ required "lokiStack.storageClassName is required" $ls.storageClassName }}
+  storage:
+    schemas:
+      - version: v13
+        effectiveDate: {{ $ls.schemaEffectiveDate | quote }}
+    secret:
+      name: {{ $ls.name }}-s3
+      type: s3
+  tenants:
+    # Authorizes reads against this cluster's RBAC: project members see their
+    # own namespaces, infrastructure and audit need the matching view role.
+    mode: openshift-logging
+  limits:
+    global:
+      retention:
+        days: {{ $ls.retentionDays.application }}
+    tenants:
+      {{- range $tenant := list "application" "infrastructure" "audit" }}
+      {{ $tenant }}:
+        retention:
+          days: {{ index $ls.retentionDays $tenant }}
+          {{- if and (eq $tenant "application") $hcpAudit.enabled }}
+          # The hosted control plane audit is collected as application logs,
+          # but it is the workload clusters' API audit and is kept as such.
+          streams:
+            - days: {{ $ls.retentionDays.audit }}
+              priority: 1
+              selector: '{kubernetes_namespace_name=~"{{ $hcpAudit.namespaces | join "|" | replace "*" ".*" }}", kubernetes_container_name="audit-logs"}'
+          {{- end }}
+      {{- end }}

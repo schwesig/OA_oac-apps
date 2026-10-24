@@ -1,0 +1,36 @@
+# Hub-side loki-operator, deployed only to oac-dev-infra. A per-hub drop-in rather
+# than a hub-components entry, so hubs without the matching values
+# (oac-prod-infra, nist-dev-infra) do not receive it; it moves into
+# hub-components once every hub wants logging. Mirrors the child Application
+# that hub-components generates for a hub component: same chart path and the
+# same optional hub-wide -> local-cluster values layering.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: hub-loki-operator
+  namespace: openshift-gitops
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/CCI-MOC/oac-apps.git
+    targetRevision: main
+    path: charts/loki-operator
+    helm:
+      ignoreMissingValueFiles: true
+      valueFiles:
+        - /values/oac-dev-infra/loki-operator.yaml
+        - /values/oac-dev-infra/local-cluster/loki-operator.yaml
+  destination:
+    server: https://kubernetes.default.svc
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    retry:
+      limit: 5
+      backoff:
+        duration: 30s
+        factor: 2
+        maxDuration: 10m

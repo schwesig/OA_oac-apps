@@ -1,0 +1,5 @@
+# Takes effect once the cluster carries massopen.cloud/feature-logging, which
+# is set separately, after its Pure S3 bucket path works.
+lokiStack:
+  # Dev runs the demo size; prod is sized from what this measures.
+  size: 1x.demo

@@ -20,3 +20,6 @@ placements:
   - name: metallb-clusters
     matchLabels:
       massopen.cloud/feature-metallb: "true"
+  - name: logging-clusters
+    matchLabels:
+      massopen.cloud/feature-logging: "true"

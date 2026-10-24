@@ -1,0 +1,76 @@
+# Same chart on the hub and on the workload clusters. Size and inputs differ
+# per cluster, so they belong in values/<hub>/<cluster>/ or
+# values/<hub>/local-cluster/, not in the hub-wide
+# values/<hub>/cluster-logging.yaml, which reaches the hub as well.
+namespace: openshift-logging
+operatorgroup:
+  targetNamespaces: false
+subscription:
+  # Keep in step with the loki-operator chart.
+  channel: stable-6.6
+  name: cluster-logging
+  source: redhat-operators
+  sourceNamespace: openshift-marketplace
+  installPlanApproval: Automatic
+
+lokiStack:
+  # The console plugin and the lokiStack output both default to this name.
+  name: logging-loki
+  # No default on purpose. Dev runs 1x.demo; prod is sized from what dev
+  # measures, so a cluster switched on without a size fails instead of
+  # inheriting the demo footprint.
+  size: ""
+  # Pure for all observability storage: FlashBlade file for the PVCs, a
+  # FlashBlade bucket (below) for the chunks.
+  storageClassName: pure-fb-nfsv4
+  # Never change a date once the stack has written data; append a new schema.
+  schemaEffectiveDate: "2026-10-01"
+  bucket:
+    className: fb-bucket
+    accessClassName: fb-access-rw
+  # The same on dev and prod.
+  retentionDays:
+    application: 15
+    infrastructure: 15
+    audit: 90
+
+collector:
+  name: collector
+  serviceAccount: collector
+  # Every node has to run a collector, including the GPU nodes that nfd taints
+  # with nvidia.com/gpu.product:NoSchedule, or their workloads' logs are lost.
+  # Same default as object-storage-proxy.
+  tolerations:
+    - operator: Exists
+      effect: NoSchedule
+  inputs:
+    application: true
+    infrastructure: true
+    audit:
+      enabled: true
+      # A hosted cluster's nodes run no API servers, so kubeAPI and openshiftAPI
+      # would collect nothing there. Its API audit lives on the hub.
+      sources:
+        - auditd
+        - ovn
+    # Hub only. The hosted control planes run their API servers in
+    # clusters-<name> on the hub, and each one has an audit-logs sidecar that
+    # tails audit.log to stdout. They arrive as application logs of the hub,
+    # and keep the audit retention rather than the application one.
+    hostedControlPlaneAudit:
+      enabled: false
+      namespaces:
+        - "clusters-*"
+
+# Observe > Logs in the console.
+uiPlugin:
+  enabled: true
+
+# Groups that may read infrastructure and audit logs, and every namespace's
+# application logs, on this cluster. cluster-reader does not cover the
+# LokiStack tenants, so the admin group needs this even though it can read
+# everything else. Project members read their own namespaces' application
+# logs through the view and edit roles (templates/project-log-reader.yaml).
+viewers:
+  groups:
+    - open-accelerator-admins
