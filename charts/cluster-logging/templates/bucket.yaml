@@ -1,0 +1,30 @@
+{{- /*
+fb-bucket has deletionPolicy Delete, so deleting this claim deletes the bucket
+and every log in it. Prune=false and Delete=false keep it when the chart, the
+Application or the cluster's feature label goes away.
+*/}}
+apiVersion: objectstorage.k8s.io/v1alpha1
+kind: BucketClaim
+metadata:
+  name: {{ .Values.lokiStack.name }}
+  namespace: {{ .Values.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true,Prune=false,Delete=false
+spec:
+  bucketClassName: {{ .Values.lokiStack.bucket.className }}
+  protocols:
+    - S3
+---
+apiVersion: objectstorage.k8s.io/v1alpha1
+kind: BucketAccess
+metadata:
+  name: {{ .Values.lokiStack.name }}
+  namespace: {{ .Values.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  bucketAccessClassName: {{ .Values.lokiStack.bucket.accessClassName }}
+  bucketClaimName: {{ .Values.lokiStack.name }}
+  credentialsSecretName: bucketclaim-{{ .Values.lokiStack.name }}

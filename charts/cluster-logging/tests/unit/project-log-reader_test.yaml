@@ -1,0 +1,29 @@
+suite: cluster-logging project log reader
+templates:
+  - templates/project-log-reader.yaml
+values:
+  - ../../ci/test-values.yaml
+
+tests:
+  # openshift-logging tenancy grants no log reads by default; project members
+  # hold view or edit in their namespaces, so the read has to travel with those.
+  - it: aggregates into the view and edit roles
+    asserts:
+      - isKind:
+          of: ClusterRole
+      - equal:
+          path: metadata.labels["rbac.authorization.k8s.io/aggregate-to-view"]
+          value: "true"
+      - equal:
+          path: metadata.labels["rbac.authorization.k8s.io/aggregate-to-edit"]
+          value: "true"
+
+  - it: reads the application tenant only
+    asserts:
+      - equal:
+          path: rules
+          value:
+            - apiGroups: [loki.grafana.com]
+              resources: [application]
+              resourceNames: [logs]
+              verbs: [get]

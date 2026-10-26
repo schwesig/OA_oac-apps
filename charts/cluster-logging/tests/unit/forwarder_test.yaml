@@ -1,0 +1,77 @@
+suite: cluster-logging ClusterLogForwarder
+templates:
+  - templates/clusterlogforwarder.yaml
+  - templates/collector-rbac.yaml
+values:
+  - ../../ci/test-values.yaml
+
+tests:
+  - it: collects the three log types into the local store on a workload cluster
+    template: templates/clusterlogforwarder.yaml
+    asserts:
+      - equal:
+          path: spec.pipelines[0].inputRefs
+          value: [application, infrastructure, node-audit]
+      - equal:
+          path: spec.pipelines[0].outputRefs
+          value: [default-lokistack]
+
+  # Hosted cluster nodes run no API servers; asking for kubeAPI there would
+  # collect nothing and suggest coverage that is not there.
+  - it: limits node audit to auditd and OVN
+    template: templates/clusterlogforwarder.yaml
+    asserts:
+      - equal:
+          path: spec.inputs[0].audit.sources
+          value: [auditd, ovn]
+
+  - it: collects only the hosted control plane audit sidecars on the hub
+    template: templates/clusterlogforwarder.yaml
+    set:
+      collector.inputs.application: false
+      collector.inputs.infrastructure: false
+      collector.inputs.audit.enabled: false
+      collector.inputs.hostedControlPlaneAudit.enabled: true
+    asserts:
+      - equal:
+          path: spec.pipelines[0].inputRefs
+          value: [hcp-audit]
+      - equal:
+          path: spec.inputs[0].application.includes
+          value:
+            - namespace: clusters-*
+              container: audit-logs
+
+  - it: binds the audit collector role only when audit is collected
+    template: templates/collector-rbac.yaml
+    set:
+      collector.inputs.audit.enabled: false
+    asserts:
+      # ServiceAccount plus application, infrastructure and the store writer.
+      - hasDocuments:
+          count: 4
+      - equal:
+          path: roleRef.name
+          value: logging-collector-logs-writer
+        documentIndex: 3
+
+  # nfd taints GPU nodes with nvidia.com/gpu.product:NoSchedule; a collector
+  # that does not tolerate it misses exactly the tenant workloads that matter.
+  - it: runs the collector on tainted GPU nodes
+    template: templates/clusterlogforwarder.yaml
+    asserts:
+      - equal:
+          path: spec.collector.tolerations
+          value:
+            - operator: Exists
+              effect: NoSchedule
+
+  - it: refuses a forwarder with no inputs
+    template: templates/clusterlogforwarder.yaml
+    set:
+      collector.inputs.application: false
+      collector.inputs.infrastructure: false
+      collector.inputs.audit.enabled: false
+    asserts:
+      - failedTemplate:
+          errorPattern: enables nothing

@@ -1,0 +1,15 @@
+suite: cluster-logging UIPlugin
+templates:
+  - templates/uiplugin.yaml
+values:
+  - ../../ci/test-values.yaml
+
+tests:
+  - it: is the Logging plugin named logging pointing at the local stack
+    asserts:
+      - equal:
+          path: metadata.name
+          value: logging
+      - equal:
+          path: spec.logging.lokiStack.name
+          value: logging-loki

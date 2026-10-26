@@ -1,0 +1,31 @@
+suite: cluster-logging viewers
+templates:
+  - templates/viewers.yaml
+values:
+  - ../../ci/test-values.yaml
+
+tests:
+  # cluster-reader does not reach the LokiStack tenants, so without these the
+  # admin group sees no infrastructure or audit logs at all.
+  - it: lets the admin group read all three tenants
+    asserts:
+      - hasDocuments:
+          count: 3
+      - equal:
+          path: roleRef.name
+          value: cluster-logging-infrastructure-view
+        documentIndex: 1
+      - equal:
+          path: roleRef.name
+          value: cluster-logging-audit-view
+        documentIndex: 2
+      - equal:
+          path: subjects[0].name
+          value: open-accelerator-admins
+
+  - it: binds nothing when no group is named
+    set:
+      viewers.groups: []
+    asserts:
+      - hasDocuments:
+          count: 0
